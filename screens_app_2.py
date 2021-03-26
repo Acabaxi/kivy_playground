@@ -13,6 +13,8 @@ from kivy.uix.button import Button
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
 from kivy.uix.image import Image
+
+from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
 
 from kivy.uix.behaviors import FocusBehavior
@@ -173,8 +175,11 @@ class ImageGridScreen(Screen,):
         super(ImageGridScreen, self).__init__(**kwargs)
 
     def create_grid_widget(self):
+        self.clear_widgets()
         wid = create_image_grid_layout(current_filenames)
-        self.add_widget(wid)
+        scroll_widget = ScrollView(size_hint=(1,1), size=(500,500))
+        scroll_widget.add_widget(wid)
+        self.add_widget(scroll_widget)
 
     def sup(self):
         print("ZAAAAAAAS")
@@ -217,15 +222,13 @@ class BigImageScreen(Screen):
         for btn in self.children[0].children[0].children:
             btn.state = 'normal'
 
-        # self.children[0].source = current_image
-        # self.children[0].reload()
-
     pass
 
 
 def create_image_grid_layout(filenames, ):
     print("Creating grid")
-    grid_layout = GridLayout(cols=3, row_force_default=True, row_default_height=200)
+    grid_layout = GridLayout(cols=3, row_force_default=True, row_default_height=200, size_hint_y=None, spacing=10)
+    grid_layout.bind(minimum_height=grid_layout.setter('height'))
     for img_name in filenames:
         tint = get_tint_value(img_name)
         aaa = ImageButton(source=img_name, color=tint, on_press=tint_image, on_release=unselect, )
@@ -249,8 +252,6 @@ def get_tint_value(img_name, ):
         return 0, 1, 1, 1
     elif image_tints[img_name] == 'BL':
         return 1, 0, 1, 1
-
-
 
     else:
         return 1,1,1,1
