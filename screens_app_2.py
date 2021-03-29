@@ -1,6 +1,7 @@
 import kivy
 kivy.require('1.0.9')
 
+from example_program import do_something
 from kivy.config import Config
 Config.set('kivy', 'keyboard_mode', 'systemanddock')
 Config.set('kivy', 'keyboard_layout', 'numeric.json')
@@ -29,7 +30,10 @@ from kivy.core.window import Window
 from kivy.properties import ObjectProperty, StringProperty
 #
 
-
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("module://kivy.garden.matplotlib.backend_kivy")
+from kivy.garden.matplotlib import FigureCanvasKivyAgg
 
 from kivy.uix.behaviors import ButtonBehavior
 
@@ -203,6 +207,7 @@ class ImageGridScreen(Screen,):
         next_button = Button(size_hint_x=0.1,
                              size_hint_y=0.1,
                              text='Next screen',
+                             on_press=to_processing_screen
                              )
         next_button_layout.add_widget(next_button)
         self.add_widget(next_button_layout)
@@ -262,11 +267,13 @@ def create_image_grid_layout(filenames, ):
     grid_layout.bind(minimum_height=grid_layout.setter('height'))
     for img_name in filenames:
         tint = get_tint_value(img_name)
-
+        img_label = get_image_label(img_name)
         anchor_image_button_layout = FloatLayout()
         aaa = ImageButton(source=img_name, color=tint, on_press=tint_image, on_release=unselect, pos_hint={'right': 1, 'top': 1})
+        bbb = Button(size_hint=(0.1, 0.2), background_color=[1, 1, 1, 0.5], pos_hint={'right': 1, 'top': 1}, text=img_label, background_down='atlas://data/images/defaulttheme/button')
 
         anchor_image_button_layout.add_widget(aaa)
+        anchor_image_button_layout.add_widget(bbb)
         # grid_layout.add_widget(Image(source=img_name))
 
         grid_layout.add_widget(anchor_image_button_layout)
@@ -288,9 +295,25 @@ def get_tint_value(img_name, ):
         return 0, 1, 1, 1
     elif image_tints[img_name] == 'BL':
         return 1, 0, 1, 1
-
     else:
         return 1,1,1,1
+
+
+def get_image_label(img_name, ):
+    if img_name not in image_tints:
+        return ""
+    elif image_tints[img_name] == 'e':
+        return ""
+    elif image_tints[img_name] == 'FR':
+        return "FR"
+    elif image_tints[img_name] == 'FL':
+        return "FL"
+    elif image_tints[img_name] == 'BR':
+        return "BR"
+    elif image_tints[img_name] == 'BL':
+        return "BL"
+    else:
+        return ""
 
 
 def exclude_image(button):
@@ -313,6 +336,9 @@ def back_to_img_grid(button):
     sm.transition.direction = 'right'
     sm.current = 'image_grid'
 
+def back_to_img_grid(button):
+    sm.transition.direction = 'right'
+    sm.current = 'image_grid'
 
 def tint_image(bois):
     bois.color = (1,0,1,1)
@@ -328,6 +354,74 @@ def unselect(bois):
     print(bois.source)
 
 
+# Processing Screen
+def to_processing_screen(button):
+    sm.transition.direction = 'left'
+    sm.current = 'results'
+
+
+class ProcessingScreen(Screen):
+    def __init__(self, **kwargs):
+        super(ProcessingScreen, self).__init__(**kwargs)
+        self.add_widget(Label(text='Processing...'))
+
+    def on_enter(self):
+        print("Entering")
+        words = do_something("Whatsup")
+        print(words)
+
+    pass
+
+
+# Results grid
+
+class ResultsGridScreen(Screen):
+    def __init__(self, **kwargs):
+        super(ResultsGridScreen, self).__init__(**kwargs)
+        res_layout = BoxLayout(orientation='vertical')
+
+        btn1 = Label(size_hint=(1, 0.1), text='Results', font_size=50)
+        image_grids_result_layout = GridLayout(size_hint=(1, 0.8), cols=2)
+
+
+        img4 = plt.imread('images/microwave-custard-pudding-3a-1.jpg')
+        img3 = plt.imread('images/delish-190802-pumpkin-pudding-0042-portrait-pf-1568301342.jpg')
+        img2 = plt.imread('images/Vanilla-Pudding-SM-4457.jpg')
+        img1 = plt.imread('images/queen-of-puddings-8059-1.jpeg')
+        # imgplot = ax1.imshow(img)
+        fig1, ax1 = self.get_image_figure(img1)
+        fig2, ax2 = self.get_image_figure(img2)
+        fig3, ax3 = self.get_image_figure(img3)
+        fig4, ax4 = self.get_image_figure(img4)
+
+
+        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig1))
+        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig2))
+        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig3))
+        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig4))
+
+        # image_grids_result_layout.add_widget(Button())
+        # image_grids_result_layout.add_widget(Button())
+        # image_grids_result_layout.add_widget(Button())
+        # image_grids_result_layout.add_widget(Button())
+
+        btn2 = Label(size_hint=(1, 0.1), text='Continue??')
+
+        res_layout.add_widget(btn1)
+        res_layout.add_widget(image_grids_result_layout)
+        res_layout.add_widget(btn2)
+
+        self.add_widget(res_layout)
+
+    def get_image_figure(self, image):
+        fig, ax = plt.subplots()
+        fig.set_facecolor('black')
+        ax.axis("off")
+        # img4 = plt.imread('images/microwave-custard-pudding-3a-1.jpg')
+        imgplot = ax.imshow(image)
+
+        return fig, ax
+
 sm = ScreenManager()
 
 
@@ -340,6 +434,8 @@ class ScreenApp(App):
         sm.add_widget(FileChooseScreen(name='file_chooser'))
         sm.add_widget(ImageGridScreen(name='image_grid'))
         sm.add_widget(BigImageScreen(name='big_image'))
+        sm.add_widget(ProcessingScreen(name='processing'))
+        sm.add_widget(ResultsGridScreen(name='results'))
         return sm
 
 
