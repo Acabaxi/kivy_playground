@@ -1,5 +1,9 @@
 import kivy
-kivy.require('1.0.6')
+kivy.require('1.0.9')
+
+from kivy.config import Config
+Config.set('kivy', 'keyboard_mode', 'systemanddock')
+Config.set('kivy', 'keyboard_layout', 'numeric.json')
 
 from kivy.app import App
 from kivy.lang import Builder
@@ -9,6 +13,8 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.anchorlayout import AnchorLayout
+
 from kivy.uix.button import Button
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
@@ -22,9 +28,8 @@ from kivy.uix.behaviors import FocusBehavior
 from kivy.core.window import Window
 from kivy.properties import ObjectProperty, StringProperty
 #
-from kivy.config import Config
-Config.set('kivy', 'keyboard_mode', 'dock')
-Config.set('kivy', 'keyboard_layout', 'numeric.json')
+
+
 
 from kivy.uix.behaviors import ButtonBehavior
 
@@ -38,41 +43,50 @@ Builder.load_string("""
             anchor_y:'center'
             TextInput:
                 id: id_input
-                font_size: 20
+                font_size: 50
                 halign: 'center'
                 hint_text: 'Patient ID'
                 size_hint_x: 0.5
                 size_hint_y: 0.5
-                padding_y: self.size[0] / 10
+                padding: [0, ( self.height - self.line_height ) / 2]
                 on_text: fds.save_text(id_input.text)
                 on_focus: fds.focus_value(id_input)
-        ToggleButton:
-            text: 'Quit'
-            group: 'input_media'
+        AnchorLayout:
+            ToggleButton:
+                size_hint_x: 0.25
+                size_hint_y: 0.5
+                text: 'SD Card'
+                group: 'input_media'
         AnchorLayout:
             anchor_x:'center'
             anchor_y:'center'
             TextInput:
                 id: num_input
-                font_size: 20
+                font_size: 50
                 halign: 'center'
                 hint_text: 'UF number'
                 size_hint_x: 0.5
                 size_hint_y: 0.5
-                padding_y: self.size[0] / 10
+                padding: [0, ( self.height - self.line_height ) / 2] 
                 on_text: fds.save_text(num_input.text)
                 on_focus: fds.focus_value(id_input)
-        ToggleButton:   
-            text: 'Quit'
-            group: 'input_media'
+        AnchorLayout:
+            ToggleButton:
+                size_hint_x: 0.25
+                size_hint_y: 0.5   
+                text: 'From Camera'
+                group: 'input_media'
         Label:
         Label:
         Label:
-        Button:
-            text:'zas'
-            on_press: 
-                root.manager.current='file_chooser'
-                root.manager.transition.direction = 'left'
+        AnchorLayout:
+            Button:
+                size_hint_x: 0.25
+                size_hint_y: 0.5
+                text:'Prosseguir'
+                on_press: 
+                    root.manager.current='file_chooser'
+                    root.manager.transition.direction = 'left'
 <SettingsScreen>:
     BoxLayout:
         Button:
@@ -84,6 +98,7 @@ Builder.load_string("""
                 root.manager.transition.direction = 'left'
 <FileChooseScreen>
     id: fc_widget
+
     BoxLayout:
         FileChooserIconView:
             id: filechooser
@@ -96,18 +111,23 @@ Builder.load_string("""
                 id: image
                 pos_hint:{'right':1}
                 source: ""
-            Button:
-                id: butao
-                text: 'Siga'
-                pos_hint:{'right':1,'top':0.2}
-                size_hint:0.2,0.15
-                background_color:[1,1,1,0.5]
-                on_press: 
-                    root.manager.current = 'image_grid'
-                    root.manager.transition.direction = 'left'
+    AnchorLayout:
+        anchor_x:'right'
+        anchor_y:'bottom'
+        Button:
+            id: butao
+            text: 'Siga'
+            #pos_hint:{'right':1,'top':0.2}
+            size_hint:0.1,0.1
+            background_color:[1,1,1,0.5]
+            on_press: 
+                root.manager.current = 'image_grid'
+                root.manager.transition.direction = 'left'
+
 <ImageGridScreen>
     id: image_grid
     on_pre_enter: image_grid.create_grid_widget()
+
     
 <BigImageScreen>
     id: big_image
@@ -150,14 +170,6 @@ class FileChooseScreen(Screen):
 
         self.previous_filenames = filename.copy()
 
-
-        # try:
-        #     print("all files", filename)
-        #     self.ids.image.source = filename[0]
-        #     print(filename[-1])
-        # except:
-        #     pass
-
     def set_path(self):
         return "./images"
 
@@ -175,16 +187,35 @@ class ImageGridScreen(Screen,):
         super(ImageGridScreen, self).__init__(**kwargs)
 
     def create_grid_widget(self):
+        # Avoid inserting duplicate widgets on layout
         self.clear_widgets()
+
+        # self explanatory
         wid = create_image_grid_layout(current_filenames)
+
+        # Scroll grid
         scroll_widget = ScrollView(size_hint=(1,1), size=(500,500))
         scroll_widget.add_widget(wid)
         self.add_widget(scroll_widget)
 
-    def sup(self):
-        print("ZAAAAAAAS")
+        next_button_layout = AnchorLayout(anchor_x='right',
+                             anchor_y='bottom')
+        next_button = Button(size_hint_x=0.1,
+                             size_hint_y=0.1,
+                             text='Next screen',
+                             )
+        next_button_layout.add_widget(next_button)
+        self.add_widget(next_button_layout)
 
 
+        # AnchorLayout:
+        # Button:
+        # size_hint_x: 0.25
+        # size_hint_y: 0.5
+        # text: 'Prosseguir'
+        # on_press:
+        # root.manager.current = 'file_chooser'
+        # root.manager.transition.direction = 'left'
 
 
 class ImageButton(ButtonBehavior, Image):
@@ -231,9 +262,14 @@ def create_image_grid_layout(filenames, ):
     grid_layout.bind(minimum_height=grid_layout.setter('height'))
     for img_name in filenames:
         tint = get_tint_value(img_name)
-        aaa = ImageButton(source=img_name, color=tint, on_press=tint_image, on_release=unselect, )
+
+        anchor_image_button_layout = FloatLayout()
+        aaa = ImageButton(source=img_name, color=tint, on_press=tint_image, on_release=unselect, pos_hint={'right': 1, 'top': 1})
+
+        anchor_image_button_layout.add_widget(aaa)
         # grid_layout.add_widget(Image(source=img_name))
-        grid_layout.add_widget(aaa)
+
+        grid_layout.add_widget(anchor_image_button_layout)
         print(img_name)
 
     return grid_layout
@@ -293,6 +329,8 @@ def unselect(bois):
 
 
 sm = ScreenManager()
+
+
 class ScreenApp(App):
     def build(self):
 
