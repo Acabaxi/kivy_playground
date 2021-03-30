@@ -357,7 +357,7 @@ def unselect(bois):
 # Processing Screen
 def to_processing_screen(button):
     sm.transition.direction = 'left'
-    sm.current = 'results'
+    sm.current = 'processing'
 
 
 class ProcessingScreen(Screen):
@@ -369,6 +369,8 @@ class ProcessingScreen(Screen):
         print("Entering")
         words = do_something("Whatsup")
         print(words)
+        sm.transition.direction = 'left'
+        sm.current = 'results'
 
     pass
 
@@ -394,16 +396,10 @@ class ResultsGridScreen(Screen):
         fig3, ax3 = self.get_image_figure(img3)
         fig4, ax4 = self.get_image_figure(img4)
 
-
-        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig1))
-        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig2))
-        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig3))
-        image_grids_result_layout.add_widget(FigureCanvasKivyAgg(figure=fig4))
-
-        # image_grids_result_layout.add_widget(Button())
-        # image_grids_result_layout.add_widget(Button())
-        # image_grids_result_layout.add_widget(Button())
-        # image_grids_result_layout.add_widget(Button())
+        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig1))
+        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig2))
+        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig3))
+        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig4))
 
         btn2 = Label(size_hint=(1, 0.1), text='Continue??')
 
@@ -417,10 +413,19 @@ class ResultsGridScreen(Screen):
         fig, ax = plt.subplots()
         fig.set_facecolor('black')
         ax.axis("off")
-        # img4 = plt.imread('images/microwave-custard-pudding-3a-1.jpg')
         imgplot = ax.imshow(image)
 
         return fig, ax
+
+
+class FakeFigureCanvas(FigureCanvasKivyAgg):
+    # https://andnovar.wordpress.com/2015/06/15/connecting-events-between-kivy-and-matplotlib/
+    def __init__(self, **kwargs):
+        super(FakeFigureCanvas, self).__init__(**kwargs)
+
+    # Disables previously defined on_touch_down. Doesn't call vitual keyboard
+    def on_touch_down(self, event):
+        pass
 
 sm = ScreenManager()
 
