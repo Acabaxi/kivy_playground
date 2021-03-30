@@ -1,7 +1,8 @@
 import kivy
 kivy.require('1.0.9')
 
-from example_program import do_something
+import example_program
+
 from kivy.config import Config
 Config.set('kivy', 'keyboard_mode', 'systemanddock')
 Config.set('kivy', 'keyboard_layout', 'numeric.json')
@@ -24,9 +25,11 @@ from kivy.uix.image import Image
 from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
 
+Window.fullscreen = True
+
 from kivy.uix.behaviors import FocusBehavior
 
-from kivy.core.window import Window
+
 from kivy.properties import ObjectProperty, StringProperty
 #
 
@@ -53,7 +56,7 @@ Builder.load_string("""
                 size_hint_x: 0.5
                 size_hint_y: 0.5
                 padding: [0, ( self.height - self.line_height ) / 2]
-                on_text: fds.save_text(id_input.text)
+                on_text: fds.save_patient_id(id_input.text)
                 on_focus: fds.focus_value(id_input)
         AnchorLayout:
             ToggleButton:
@@ -72,7 +75,7 @@ Builder.load_string("""
                 size_hint_x: 0.5
                 size_hint_y: 0.5
                 padding: [0, ( self.height - self.line_height ) / 2] 
-                on_text: fds.save_text(num_input.text)
+                on_text: fds.save_uf_number(num_input.text)
                 on_focus: fds.focus_value(id_input)
         AnchorLayout:
             ToggleButton:
@@ -140,8 +143,19 @@ Builder.load_string("""
     
 """)
 
-
+patient_id = -1
+uf_number = -1
 class MenuScreen(Screen):
+
+    def save_patient_id(self, value):
+        global patient_id
+        print("Saving patient id", value)
+        patient_id = value
+
+    def save_uf_number(self, value):
+        global uf_number
+        print("Saving uf number", value)
+        uf_number = value
 
     def save_text(self, value):
         print(value)
@@ -213,16 +227,6 @@ class ImageGridScreen(Screen,):
         self.add_widget(next_button_layout)
 
 
-        # AnchorLayout:
-        # Button:
-        # size_hint_x: 0.25
-        # size_hint_y: 0.5
-        # text: 'Prosseguir'
-        # on_press:
-        # root.manager.current = 'file_chooser'
-        # root.manager.transition.direction = 'left'
-
-
 class ImageButton(ButtonBehavior, Image):
     # Behaviour of button, look of image
     pass
@@ -237,10 +241,10 @@ class BigImageScreen(Screen):
         # Selector grid
         grid_layout = GridLayout(cols=1, pos_hint={'right': 0.95, 'top': 0.5}, size_hint=[0.05, 0.4],
                                  spacing=[0, 10] )
-        grid_layout.add_widget(ToggleButton(text="FL", group='region', on_press=set_fl))
-        grid_layout.add_widget(ToggleButton(text="FR", group='region', on_press=set_fr))
-        grid_layout.add_widget(ToggleButton(text="BR", group='region', on_press=set_br))
-        grid_layout.add_widget(ToggleButton(text="BL", group='region', on_press=set_bl))
+        grid_layout.add_widget(ToggleButton(text="FL", group='region', on_press=set_fl,on_release=back_to_img_grid))
+        grid_layout.add_widget(ToggleButton(text="FR", group='region', on_press=set_fr,on_release=back_to_img_grid))
+        grid_layout.add_widget(ToggleButton(text="BR", group='region', on_press=set_br,on_release=back_to_img_grid))
+        grid_layout.add_widget(ToggleButton(text="BL", group='region', on_press=set_bl,on_release=back_to_img_grid))
         grid_layout.add_widget(Label())
         grid_layout.add_widget(ToggleButton(text="Exclude", group='region', on_press=exclude_image))
         grid_layout.add_widget(Button(text="Back", on_release=back_to_img_grid))
@@ -286,24 +290,24 @@ def get_tint_value(img_name, ):
     if img_name not in image_tints:
         return 1, 1, 1, 1
     elif image_tints[img_name] == 'e':
-        return 1, 0, 0, 1
+        return 1, 0, 0, 0.75
     elif image_tints[img_name] == 'FR':
-        return 0, 1, 0, 1
+        return 1, 1, 1, 0.5
     elif image_tints[img_name] == 'FL':
-        return 0, 0, 1, 1
+        return 1, 1, 1, 0.5
     elif image_tints[img_name] == 'BR':
-        return 0, 1, 1, 1
+        return 1, 1, 1, 0.5
     elif image_tints[img_name] == 'BL':
-        return 1, 0, 1, 1
+        return 1, 1, 1, 0.5
     else:
-        return 1,1,1,1
+        return 1, 1, 1, 1
 
 
 def get_image_label(img_name, ):
     if img_name not in image_tints:
         return ""
     elif image_tints[img_name] == 'e':
-        return ""
+        return "XXX"
     elif image_tints[img_name] == 'FR':
         return "FR"
     elif image_tints[img_name] == 'FL':
@@ -360,6 +364,43 @@ def to_processing_screen(button):
     sm.current = 'processing'
 
 
+processed_images = {}
+image_counts = {}
+validated = False
+count_margin_percent = 5
+selected_images_max = {}
+selected_images_min = {}
+
+
+def validate_count():
+
+    img_distribution = {}
+
+    for img_num in range(len(image_tints.keys())):
+        zone = image_tints[list(image_tints.keys())[img_num]]
+        if zone in img_distribution:
+            img_distribution[zone].append(img_num)
+        else:
+            img_distribution[zone] = [img_num]
+
+    max_value = 0
+    min_value = 0
+    for key in img_distribution:
+        zone_max = max(img_distribution[key], key=lambda x: image_counts[x])
+        zone_min = min(img_distribution[key], key=lambda x: image_counts[x])
+
+        selected_images_max[key] = zone_max
+        selected_images_min[key] = zone_min
+
+        max_value = max_value + image_counts[zone_max]
+        min_value = min_value + image_counts[zone_min]
+
+    print("Max value found", max_value)
+    print("Min value found", min_value)
+    print(img_distribution)
+    print(image_counts)
+
+
 class ProcessingScreen(Screen):
     def __init__(self, **kwargs):
         super(ProcessingScreen, self).__init__(**kwargs)
@@ -367,8 +408,13 @@ class ProcessingScreen(Screen):
 
     def on_enter(self):
         print("Entering")
-        words = do_something("Whatsup")
-        print(words)
+        print(current_filenames)
+
+        global processed_images
+        global image_counts
+        processed_images, image_counts = example_program.read_images_and_flip(current_filenames)
+
+        validate_count()
         sm.transition.direction = 'left'
         sm.current = 'results'
 
@@ -380,32 +426,56 @@ class ProcessingScreen(Screen):
 class ResultsGridScreen(Screen):
     def __init__(self, **kwargs):
         super(ResultsGridScreen, self).__init__(**kwargs)
-        res_layout = BoxLayout(orientation='vertical')
 
+    def on_pre_enter(self, *args):
+        self.clear_widgets()
+        #
+        res_layout = BoxLayout(orientation='vertical')
         btn1 = Label(size_hint=(1, 0.1), text='Results', font_size=50)
+
+        #
         image_grids_result_layout = GridLayout(size_hint=(1, 0.8), cols=2)
 
+        for key in selected_images_max:
+            if key == 'e':
+                continue
+            img_number = selected_images_max[key]
+            img = processed_images[img_number][:,:,::-1]
+            fig, ax = self.get_image_figure(img)
+            image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig))
 
-        img4 = plt.imread('images/microwave-custard-pudding-3a-1.jpg')
-        img3 = plt.imread('images/delish-190802-pumpkin-pudding-0042-portrait-pf-1568301342.jpg')
-        img2 = plt.imread('images/Vanilla-Pudding-SM-4457.jpg')
-        img1 = plt.imread('images/queen-of-puddings-8059-1.jpeg')
-        # imgplot = ax1.imshow(img)
-        fig1, ax1 = self.get_image_figure(img1)
-        fig2, ax2 = self.get_image_figure(img2)
-        fig3, ax3 = self.get_image_figure(img3)
-        fig4, ax4 = self.get_image_figure(img4)
 
-        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig1))
-        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig2))
-        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig3))
-        image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig4))
+        # img1 = processed_images[0][:,:,::-1]
+        # img2 = processed_images[1][:,:,::-1]
+        # img3 = processed_images[2][:,:,::-1]
+        # img4 = processed_images[3][:,:,::-1]
+        # # img4 = plt.imread('images/microwave-custard-pudding-3a-1.jpg')
+        # # img3 = plt.imread('images/delish-190802-pumpkin-pudding-0042-portrait-pf-1568301342.jpg')
+        # # img2 = plt.imread('images/Vanilla-Pudding-SM-4457.jpg')
+        # # img1 = plt.imread('images/queen-of-puddings-8059-1.jpeg')
+        #
+        # fig1, ax1 = self.get_image_figure(img1)
+        # fig2, ax2 = self.get_image_figure(img2)
+        # fig3, ax3 = self.get_image_figure(img3)
+        # fig4, ax4 = self.get_image_figure(img4)
+        #
+        # image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig1))
+        # image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig2))
+        # image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig3))
+        # image_grids_result_layout.add_widget(FakeFigureCanvas(figure=fig4))
 
-        btn2 = Label(size_hint=(1, 0.1), text='Continue??')
+        #
+        bottom_box = BoxLayout(orientation='horizontal', size_hint=(1, 0.1))
+        btn2 = Button(text='Continue??', background_color=[0,1,0,1],background_down='atlas://data/images/defaulttheme/button')
+        btn_yes = Button(text='Yes')
+        btn_no = Button(text='No')
+        bottom_box.add_widget(btn_no)
+        bottom_box.add_widget(btn2)
+        bottom_box.add_widget(btn_yes)
 
         res_layout.add_widget(btn1)
         res_layout.add_widget(image_grids_result_layout)
-        res_layout.add_widget(btn2)
+        res_layout.add_widget(bottom_box)
 
         self.add_widget(res_layout)
 
@@ -426,6 +496,7 @@ class FakeFigureCanvas(FigureCanvasKivyAgg):
     # Disables previously defined on_touch_down. Doesn't call vitual keyboard
     def on_touch_down(self, event):
         pass
+
 
 sm = ScreenManager()
 
