@@ -113,12 +113,11 @@ Builder.load_string("""
             multiselect: True
             path: fc_widget.set_path()
             on_selection: fc_widget.selected(filechooser.selection)
-            size_hint_x: 1
-        FloatLayout:          
-            Image:
-                id: image
-                pos_hint:{'right':1}
-                source: ""
+            size_hint_x: 1        
+        Image:
+            id: image
+            pos_hint:{'right':1}
+            source: ""
     AnchorLayout:
         anchor_x:'right'
         anchor_y:'bottom'
@@ -131,6 +130,17 @@ Builder.load_string("""
             on_press: 
                 root.manager.current = 'image_grid'
                 root.manager.transition.direction = 'left'
+    AnchorLayout:
+        anchor_x:'left'
+        anchor_y:'bottom'
+        Button:
+            id: butao_back
+            text: 'Back'
+            size_hint:0.1,0.1
+            background_color:[1,1,1,0.5]
+            on_press: 
+                root.manager.current = 'menu'
+                root.manager.transition.direction = 'right'
 
 <ImageGridScreen>
     id: image_grid
@@ -226,8 +236,20 @@ class ImageGridScreen(Screen,):
                              text='Next screen',
                              on_press=to_processing_screen
                              )
+
+        back_button_layout = AnchorLayout(anchor_x='left',
+                                          anchor_y='bottom')
+        back_button = Button(size_hint_x=0.1,
+                             size_hint_y=0.1,
+                             text='Back',
+                             on_press=to_filechooser_from_grid
+                             )
+
         next_button_layout.add_widget(next_button)
         self.add_widget(next_button_layout)
+
+        back_button_layout.add_widget(back_button)
+        self.add_widget(back_button_layout)
 
 
 class ImageButton(ButtonBehavior, Image):
@@ -363,6 +385,10 @@ def to_processing_screen(button):
     sm.transition.direction = 'left'
     sm.current = 'processing'
 
+# Processing Screen
+def to_filechooser_from_grid(button):
+    sm.transition.direction = 'right'
+    sm.current = 'file_chooser'
 
 processed_images = {}
 image_counts = {}
@@ -448,7 +474,7 @@ class ResultsGridScreen(Screen):
                        + ' - ' \
                        + str(int(uf_number*(1+(count_margin_percent/100)))) \
                        + ' (' + str(max_value) + ')'
-        btn1 = Label(size_hint=(1, 0.05), text=label_text, font_size=40)
+        result_text_label = Label(size_hint=(1, 0.05), text=label_text, font_size=40)
         btn_num = Label(size_hint=(1, 0.05), text=results_text, font_size=40)
 
         #
@@ -485,18 +511,23 @@ class ResultsGridScreen(Screen):
         #
         bottom_box = BoxLayout(orientation='horizontal', size_hint=(1, 0.1))
 
+        placeholder_label = Label()
         if validated:
+            first_button = Label()
             btn2 = Button(text='Continue??', background_color=[0,1,0,1],background_down='atlas://data/images/defaulttheme/button')
+            second_button = Button(text='Yes', on_press=to_confirmation_screen)
         else:
+            first_button = Button(text='No', on_press=to_confirmation_screen)
             btn2 = Button(text='Continue??', background_color=[1, 0, 0, 1],
                           background_down='atlas://data/images/defaulttheme/button')
-        btn_yes = Button(text='Yes')
-        btn_no = Button(text='No')
-        bottom_box.add_widget(btn_no)
-        bottom_box.add_widget(btn2)
-        bottom_box.add_widget(btn_yes)
+            second_button = Label()
 
-        res_layout.add_widget(btn1)
+        bottom_box.add_widget(first_button)
+        bottom_box.add_widget(btn2)
+        bottom_box.add_widget(second_button)
+
+        #
+        res_layout.add_widget(result_text_label)
         res_layout.add_widget(btn_num)
         res_layout.add_widget(image_grids_result_layout)
         res_layout.add_widget(bottom_box)
@@ -510,6 +541,21 @@ class ResultsGridScreen(Screen):
         imgplot = ax.imshow(image)
 
         return fig, ax
+
+
+def to_confirmation_screen(button):
+    sm.transition.direction = 'left'
+    sm.current = 'confirmation_page'
+
+
+class ConfirmationScreen(Screen):
+
+    def __init__(self, **kwargs):
+        super(ConfirmationScreen, self).__init__(**kwargs)
+
+        self.add_widget(Label(text='Done'))
+
+    pass
 
 
 class FakeFigureCanvas(FigureCanvasKivyAgg):
@@ -536,6 +582,7 @@ class ScreenApp(App):
         sm.add_widget(BigImageScreen(name='big_image'))
         sm.add_widget(ProcessingScreen(name='processing'))
         sm.add_widget(ResultsGridScreen(name='results'))
+        sm.add_widget(ConfirmationScreen(name='confirmation_page'))
         return sm
 
 
