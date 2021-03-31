@@ -28,8 +28,6 @@ from kivy.core.window import Window
 Window.fullscreen = True
 
 from kivy.uix.behaviors import FocusBehavior
-
-
 from kivy.properties import ObjectProperty, StringProperty
 #
 
@@ -39,6 +37,9 @@ matplotlib.use("module://kivy.garden.matplotlib.backend_kivy")
 from kivy.garden.matplotlib import FigureCanvasKivyAgg
 
 from kivy.uix.behaviors import ButtonBehavior
+
+# df -Th finds mounted drives
+# SD card should show up on /media/user folder
 
 Builder.load_string("""
 <MenuScreen>:
@@ -145,17 +146,19 @@ Builder.load_string("""
 
 patient_id = -1
 uf_number = -1
+
+
 class MenuScreen(Screen):
 
     def save_patient_id(self, value):
         global patient_id
-        print("Saving patient id", value)
-        patient_id = value
+        patient_id = int(value)
+        print("Saving patient id", patient_id)
 
     def save_uf_number(self, value):
         global uf_number
-        print("Saving uf number", value)
-        uf_number = value
+        uf_number = int(value)
+        print("Saving uf number", uf_number, type(uf_number))
 
     def save_text(self, value):
         print(value)
@@ -340,9 +343,6 @@ def back_to_img_grid(button):
     sm.transition.direction = 'right'
     sm.current = 'image_grid'
 
-def back_to_img_grid(button):
-    sm.transition.direction = 'right'
-    sm.current = 'image_grid'
 
 def tint_image(bois):
     bois.color = (1,0,1,1)
@@ -368,6 +368,8 @@ processed_images = {}
 image_counts = {}
 validated = False
 count_margin_percent = 5
+max_value = 0
+min_value = 0
 selected_images_max = {}
 selected_images_min = {}
 
@@ -383,9 +385,13 @@ def validate_count():
         else:
             img_distribution[zone] = [img_num]
 
+    global max_value
+    global min_value
     max_value = 0
     min_value = 0
     for key in img_distribution:
+        if key == 'e':
+            continue
         zone_max = max(img_distribution[key], key=lambda x: image_counts[x])
         zone_min = min(img_distribution[key], key=lambda x: image_counts[x])
 
@@ -394,6 +400,12 @@ def validate_count():
 
         max_value = max_value + image_counts[zone_max]
         min_value = min_value + image_counts[zone_min]
+
+    global validated
+    if uf_number * (1 - (count_margin_percent / 100)) < max_value < uf_number * (1 + (count_margin_percent / 100)):
+        validated = True
+    else:
+        validated = False
 
     print("Max value found", max_value)
     print("Min value found", min_value)
@@ -431,7 +443,13 @@ class ResultsGridScreen(Screen):
         self.clear_widgets()
         #
         res_layout = BoxLayout(orientation='vertical')
-        btn1 = Label(size_hint=(1, 0.1), text='Results', font_size=50)
+        label_text = 'Results'
+        results_text = str(int(uf_number*(1-(count_margin_percent/100)))) \
+                       + ' - ' \
+                       + str(int(uf_number*(1+(count_margin_percent/100)))) \
+                       + ' (' + str(max_value) + ')'
+        btn1 = Label(size_hint=(1, 0.05), text=label_text, font_size=40)
+        btn_num = Label(size_hint=(1, 0.05), text=results_text, font_size=40)
 
         #
         image_grids_result_layout = GridLayout(size_hint=(1, 0.8), cols=2)
@@ -466,7 +484,12 @@ class ResultsGridScreen(Screen):
 
         #
         bottom_box = BoxLayout(orientation='horizontal', size_hint=(1, 0.1))
-        btn2 = Button(text='Continue??', background_color=[0,1,0,1],background_down='atlas://data/images/defaulttheme/button')
+
+        if validated:
+            btn2 = Button(text='Continue??', background_color=[0,1,0,1],background_down='atlas://data/images/defaulttheme/button')
+        else:
+            btn2 = Button(text='Continue??', background_color=[1, 0, 0, 1],
+                          background_down='atlas://data/images/defaulttheme/button')
         btn_yes = Button(text='Yes')
         btn_no = Button(text='No')
         bottom_box.add_widget(btn_no)
@@ -474,6 +497,7 @@ class ResultsGridScreen(Screen):
         bottom_box.add_widget(btn_yes)
 
         res_layout.add_widget(btn1)
+        res_layout.add_widget(btn_num)
         res_layout.add_widget(image_grids_result_layout)
         res_layout.add_widget(bottom_box)
 
